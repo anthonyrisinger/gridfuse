@@ -5,7 +5,7 @@ from sys import argv
 import fuse
 import types
 from fuse import FuseOSError, LoggingMixIn, Operations, fuse_get_context
-from urlparse import urlparse
+from urlparse import urlsplit, urlunsplit
 from pymongo import Connection
 from gridfs import GridFS, GridIn, GridOut
 import os, stat, time
@@ -38,6 +38,7 @@ fuse.fuse_file_info.__repr__ = types.MethodType(
 
 class GridFUSE(Operations):
 
+    DEFAULT = ('mongodb://127.0.0.1/gridfs/fs',)
     FMODE = (stat.S_IRWXU|stat.S_IROTH|stat.S_IRGRP)^stat.S_IRUSR
     DMODE = FMODE|stat.S_IXUSR|stat.S_IXGRP|stat.S_IXOTH
     ST = ({
@@ -59,26 +60,38 @@ class GridFUSE(Operations):
                 self.__class__.__name__,
                 ' '.join([
                     ('%s=%r' % x) for x in [
-                        ('db', self.db),
-                        ('coll', self.coll),
+                        ('fs', self.fs),
                         ]]))
 
-    def __init__(self, db_uri, *args, **kwds):
-        #TODO: fix this crap... remnants of original [external] impl
+    def __init__(self, nodes=None, db=None, coll=None, *args, **kwds):
         super(GridFUSE, self).__init__()
-        url = urlparse(db_uri)
-        if url.scheme != 'mongodb':
-            exit(1)
-        path = url.path
-        (db_path, collection) = os.path.split(path)
-        db = os.path.basename(db_path)
-        mongodb_uri = ''.join([url[0], '://',url[1], db_path])
+        nodes = nodes or GridFUSE.DEFAULT
+        if isinstance(nodes, basestring):
+            nodes = [nodes]
+        cluster = list()
+        for node in nodes:
+            uri = urlsplit(node)
+            if uri.scheme != 'mongodb':
+                raise TypeError, 'invalid uri.scheme: %r' % uri.scheme
+            node_db, _, node_coll = uri.path.strip('/').partition('/')
+            if db is None and node_db:
+                db = node_db
+            if coll is None and node_coll:
+                coll = node_coll.replace('/', '.')
+            cluster.append(urlunsplit((
+                uri.scheme,
+                uri.netloc,
+                node_db,
+                uri.query,
+                uri.fragment,
+                )))
+        if not db or not coll:
+            raise TypeError, 'undefined db and/or root collection'
+        conn = self.conn = Connection(cluster)
+        self.debug = bool(kwds.pop('debug', False))
+        self.gfs = GridFS(conn[db], collection=coll)
+        self.fs = conn[db][coll]
         self._ctx = Context(self)
-        self.cn = Connection(mongodb_uri)
-        self.db = self.cn[db]
-        self.coll = self.db[collection]
-        self.gfs = GridFS(self.db, collection=collection)
-        self.debug = bool(kwds.pop('debug'))
         if not self.gfs.exists(filename=''):
             self.mkdir()
 
@@ -117,7 +130,7 @@ class GridFUSE(Operations):
         return st
 
     def chmod(self, path, mode):
-        self.coll.files.update(
+        self.fs.files.update(
                 {'filename': path, 'visible': True},
                 {'$set': {'stat.st_mode': mode}},
                 upsert=False,
@@ -125,7 +138,7 @@ class GridFUSE(Operations):
                 )
 
     def chown(self, path, uid, gid):
-        self.coll.files.update(
+        self.fs.files.update(
                 {'filename': path, 'visible': True},
                 {'$set': {'stat.st_uid': uid, 'stat.st_gid': gid}},
                 upsert=False,
@@ -154,7 +167,7 @@ class GridFUSE(Operations):
             spec._file['stat'].update(st_mode=mode|S_IFREG)
         file = spec._file
         file.pop('_id')
-        fh, spec = self._ctx.acquire(GridIn(self.coll, **file))
+        fh, spec = self._ctx.acquire(GridIn(self.fs, **file))
         if fi is not None:
             fi.fh = fh
             return 0
@@ -202,7 +215,7 @@ class GridFUSE(Operations):
         for rel in ('.', '..'):
             yield rel
 
-        for sub in self.coll.files.find({
+        for sub in self.fs.files.find({
             'dirname': path,
             'visible': True,
             }).distinct('filename'):
@@ -251,7 +264,7 @@ class GridFUSE(Operations):
         if spec is None or not spec.visible:
             raise FuseOSError(ENOENT)
 
-        self.coll.files.update(
+        self.fs.files.update(
                 {'filename': path},
                 {'$set': {'visible': False}},
                 upsert=False,
@@ -373,7 +386,16 @@ if __name__ == '__main__':
             )
     parser.add_argument(
             '-u', '--uri',
-            help='mongodb connection string',
+            action='append',
+            help='connection string: [mongodb://]HOST[/db[/coll]]',
+            )
+    parser.add_argument(
+            '-d', '--db',
+            help='force specified database',
+            )
+    parser.add_argument(
+            '-c', '--coll',
+            help='force specified collection',
             )
     parser.add_argument(
             'mountpoint',
@@ -384,7 +406,7 @@ if __name__ == '__main__':
     o.verbose = min(o.verbose, 3)
 
     fuse = fuse.FUSE(
-            GridFUSE(o.uri, debug=bool(o.verbose & 1)),
+            GridFUSE(o.uri, o.db, o.coll, debug=bool(o.verbose & 1)),
             o.mountpoint,
             raw_fi=True,
             foreground=o.foreground,
