@@ -3,7 +3,7 @@ needs... pymongo, fusepy... docs may [or may not] improve :/
 ex.::
 
     # mkdir mnt
-    # python2 gridfuse.py -s -f -u mongodb://localhost/gridfs/fs mnt
+    # python2 gridfuse.py mnt
     # ls -l mnt
       total 0
     # mkdir -p mnt/path/to/nowhere
