@@ -46,8 +46,8 @@ class GridFUSE(Operations):
         'st_ino': 0,
         'st_dev': 0,
         'st_nlink': 1,
-        'st_uid': 0,
-        'st_gid': 0,
+        'st_uid': os.geteuid(),
+        'st_gid': os.getegid(),
         'st_size': 0,
         'st_atime': 0,
         'st_mtime': 0,
@@ -154,7 +154,6 @@ class GridFUSE(Operations):
         now = time.time()
         st = self.ST.copy()
         st.update(st_ctime=now, st_mtime=now, st_atime=now)
-        st['st_uid'], st['st_gid'], _ = fuse_get_context()
         return self.gfs.new_file(
                 filename=path,
                 stat=st,
