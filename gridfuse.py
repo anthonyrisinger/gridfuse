@@ -71,6 +71,9 @@ class GridFUSE(Operations):
         cluster = list()
         for node in nodes:
             uri = urlsplit(node)
+            if not uri.scheme:
+                cluster.append(node)
+                continue
             if uri.scheme != 'mongodb':
                 raise TypeError, 'invalid uri.scheme: %r' % uri.scheme
             node_db, _, node_coll = uri.path.strip('/').partition('/')
@@ -386,7 +389,7 @@ if __name__ == '__main__':
     parser.add_argument(
             '-u', '--uri',
             action='append',
-            help='connection string: [mongodb://]HOST[/db[/coll]]',
+            help='connection: [mongodb://]HOST[/db[/coll]] (repeatable)',
             )
     parser.add_argument(
             '-d', '--db',
