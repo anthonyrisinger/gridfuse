@@ -59,7 +59,7 @@ Interface
       -h, --help         show this help message and exit
       -f, --foreground   [FUSE] do not daemonize
       -s, --nothreads    [FUSE] do not use multiple threads
-      -v, --verbose      increase output verbosity
+      -v, --verbose      increase output verbosity (repeatable)
       --node CONNECTION  connection: [mongodb://]HOST[/db[/coll]] (repeatable)
       --db DATABASE      force specified database
       --coll COLLECTION  force specified collection
