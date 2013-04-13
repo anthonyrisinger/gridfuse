@@ -47,8 +47,9 @@ Caveats
 Interface
 ---------
 
-``python gridfuse.py --help``::
+.. code:: shell-session
 
+    [me@you gridfuse]$ python gridfuse.py --help
     usage: gridfuse.py [-h] [-f] [-s] [-v] [--node CONNECTION] [--db DATABASE]
                        [--coll COLLECTION]
                        DIR
@@ -68,29 +69,36 @@ Interface
 Example
 -------
 
-try this at home kids! ::
+.. code:: shell-session
 
-    # ls mnt
-      ls: cannot access mnt: No such file or directory
-    # mkdir -p mnt/path/to/nowhere
-    # python gridfuse.py mnt
-    # ls -l mnt
-      total 0
-    # echo hithere > mnt/guy
-    # cat mnt/guy
-      hithere
-    # cp mnt/guy mnt/path/to/nowhere
-    # md5sum mnt/guy mnt/path/to/nowhere/guy
-      f8a2c6169117fbbee392bdd8f9cb623b  mnt/guy
-      f8a2c6169117fbbee392bdd8f9cb623b  mnt/path/to/nowhere/guy
-    # tree --noreport mnt
-      mnt/
-      |-- guy
-      `-- path
-          `-- to
-              `-- nowhere
-                  `-- guy
-
+    [me@you gridfuse]$ mkdir -p mnt/
+    [me@you gridfuse]$ ls -n mnt/
+    total 0
+    [me@you gridfuse]$ python gridfuse.py mnt/
+    [me@you gridfuse]$ cd mnt/
+    [me@you gridfuse]$ mkdir -p sub/dir
+    [me@you gridfuse]$ ln -s sub/dir/dup sym
+    [me@you gridfuse]$ ls -n
+    total 0
+    lrwxrwxrwx 1 1000 100 11 Apr 13 09:11 sym -> sub/dir/dup
+    drwxr-xr-x 1 1000 100  0 Apr 13 09:11 sub/
+    [me@you gridfuse]$ cat sym
+    cat: sym: No such file or directory
+    [me@you gridfuse]$ echo helloworld > sub/reg
+    [me@you gridfuse]$ cat sub/reg
+    helloworld
+    [me@you gridfuse]$ cp sub/reg sub/dir/dup
+    [me@you gridfuse]$ md5sum sym sub/reg sub/dir/dup
+    d73b04b0e696b0945283defa3eee4538  sym
+    d73b04b0e696b0945283defa3eee4538  sub/reg
+    d73b04b0e696b0945283defa3eee4538  sub/dir/dup
+    [me@you gridfuse]$ tree -F --charset ascii --noreport
+    .
+    |-- sub/
+    |   |-- dir/
+    |   |   `-- dup
+    |   `-- reg
+    `-- sym -> sub/dir/dup
 
 .. _pymongo: https://pypi.python.org/pypi/pymongo/
 .. _fusepy: https://pypi.python.org/pypi/fusepy/
