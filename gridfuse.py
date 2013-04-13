@@ -1,4 +1,14 @@
 #!/usr/bin/env python
+# coding: utf-8
+"""GridFUSE
+
+[r/w] python virtual filesystem a la GridFS/FUSE
+"""
+
+
+from __future__ import absolute_import
+from __future__ import print_function
+from __future__ import division
 
 try:
     long
@@ -48,7 +58,6 @@ if hasattr(_fi_repr, 'func_name'):
             )
 
 fuse.fuse_file_info.__repr__ = _fi_repr
-
 
 
 class GridFUSE(Operations):
@@ -399,7 +408,7 @@ if __name__ == '__main__':
             '-v', '--verbose',
             action='count',
             default=False,
-            help='increase output verbosity',
+            help='increase output verbosity (repeatable)',
             )
     parser.add_argument(
             '--node',
