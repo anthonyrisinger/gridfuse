@@ -21,11 +21,15 @@ try:
 except ImportError:
     from urlparse import urlsplit, urlunsplit
 
+try:
+    from pymongo.mongo_client import MongoClient
+except ImportError:
+    from pymongo import Connection as MongoClient
+
 import sys
 from sys import argv
 import fuse
 from fuse import FuseOSError, LoggingMixIn, Operations, fuse_get_context
-from pymongo import Connection
 from gridfs import GridFS, GridIn, GridOut
 import os, stat, time
 
@@ -105,6 +109,8 @@ class GridFUSE(Operations):
                 db = node_db
             if coll is None and node_coll:
                 coll = node_coll.replace('/', '.')
+            if node_db and uri.username is None:
+                node_db = str()
             cluster.append(urlunsplit((
                 uri.scheme,
                 uri.netloc,
@@ -114,7 +120,7 @@ class GridFUSE(Operations):
                 )))
         if not db or not coll:
             raise TypeError('undefined db and/or root collection')
-        conn = self.conn = Connection(cluster)
+        conn = self.conn = MongoClient(cluster)
         self.debug = bool(kwds.pop('debug', False))
         self.gfs = GridFS(conn[db], collection=coll)
         self.fs = conn[db][coll]
