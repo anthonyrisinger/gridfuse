@@ -1,11 +1,20 @@
 #!/usr/bin/env python
 
+try:
+    long
+except NameError:
+    basestring = str
+    long = int
+
+try:
+    from urllib.parse import urlsplit, urlunsplit
+except ImportError:
+    from urlparse import urlsplit, urlunsplit
+
 import sys
 from sys import argv
 import fuse
-import types
 from fuse import FuseOSError, LoggingMixIn, Operations, fuse_get_context
-from urlparse import urlsplit, urlunsplit
 from pymongo import Connection
 from gridfs import GridFS, GridIn, GridOut
 import os, stat, time
@@ -29,11 +38,17 @@ def _fi_repr(self):
                 ('%s=%r' % (x[0], getattr(self, x[0])))
                 for x in self._fields_
                 ]))
-fuse.fuse_file_info.__repr__ = types.MethodType(
-        _fi_repr,
-        None,
-        fuse.fuse_file_info,
-        )
+
+if hasattr(_fi_repr, 'func_name'):
+    import types
+    _fi_repr = types.MethodType(
+            _fi_repr,
+            None,
+            fuse.fuse_file_info,
+            )
+
+fuse.fuse_file_info.__repr__ = _fi_repr
+
 
 
 class GridFUSE(Operations):
@@ -75,7 +90,7 @@ class GridFUSE(Operations):
                 cluster.append(node)
                 continue
             if uri.scheme != 'mongodb':
-                raise TypeError, 'invalid uri.scheme: %r' % uri.scheme
+                raise TypeError('invalid uri.scheme: %r' % uri.scheme)
             node_db, _, node_coll = uri.path.strip('/').partition('/')
             if db is None and node_db:
                 db = node_db
@@ -89,7 +104,7 @@ class GridFUSE(Operations):
                 uri.fragment,
                 )))
         if not db or not coll:
-            raise TypeError, 'undefined db and/or root collection'
+            raise TypeError('undefined db and/or root collection')
         conn = self.conn = Connection(cluster)
         self.debug = bool(kwds.pop('debug', False))
         self.gfs = GridFS(conn[db], collection=coll)
@@ -108,14 +123,14 @@ class GridFUSE(Operations):
 
     def _debug(self, op, path, args, ret):
         own = op in self.__class__.__dict__
-        print >> sys.stderr, '%s:%s:%i/%i/%i' % (
-                (op.upper(), own) + fuse_get_context()
-                )
-        print >> sys.stderr, '::', path
-        if op != 'write':
-            print >> sys.stderr, '::', pf(args)
-            print >> sys.stderr, '::', pf(ret)
-        print >> sys.stderr
+        sys.stderr.write('%s:%s:%i/%i/%i\n' % (
+            (op.upper(), own) + fuse_get_context()
+            ))
+        sys.stderr.write(':: %s\n' % path)
+        if op not in ('read', 'write'):
+            sys.stderr.write(':: %s\n' % pf(args))
+            sys.stderr.write(':: %s\n' % pf(ret))
+        sys.stderr.write('\n')
         sys.stderr.flush()
 
     def getattr(self, path, fh):
@@ -186,7 +201,7 @@ class GridFUSE(Operations):
 
     def symlink(self, path, source):
         with self._ent(path) as spec:
-            spec._file['stat'].update(st_mode=00777|S_IFLNK)
+            spec._file['stat'].update(st_mode=0o0777|S_IFLNK)
             spec.write(str(source))
         return 0
 
@@ -322,7 +337,7 @@ class Context(object):
         self._fs = fs
         self._fd = dict()
         self._fh = list()
-        self._new = count(10).next
+        self._new = count(10)
 
     def get(self, fh):
         spec = None
@@ -341,7 +356,7 @@ class Context(object):
             try:
                 fh = heappop(self._fh)
             except IndexError:
-                fh = long(self._new())
+                fh = long(next(self._new))
 
         spec = None
         if hasattr(path, '_file'):
