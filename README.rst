@@ -31,11 +31,12 @@ command                               time (s) inodes total (MiB)
 Caveats
 -------
 
-- **[temp]** nothing is **EVER** [physically] deleted
-- **[????]** hard links unsupported (i think possible, maybe even easy)
-- **[temp]** does not check/enforce permissions well (...at all)
-- **[temp]** doesnt create proper indexes (...or any)
-- **[temp]** inefficient architecture...
+- ``planned`` nothing is **EVER** [physically] deleted, only logically
+- ``???????`` hard links unsupported (i think possible, maybe even easy)
+- ``planned`` xattrs unsupported
+- ``planned`` does not check/enforce permissions well (...at all)
+- ``planned`` doesnt create proper indexes (...or any)
+- ``planned`` inefficient architecture...
 
 .. note:: rather late... i discovered GridFS **does not** update filedata!
           instead, it "overwrites" files by creating a 100% new file with
