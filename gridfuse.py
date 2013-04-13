@@ -156,6 +156,18 @@ class GridFUSE(Operations):
         st['st_size'] = spec.length
         return st
 
+    def rename(self, path, new):
+        new = new.strip('/')
+        dirname = basename = None
+        if new:
+            dirname, basename = pth.split(new)
+        self.fs.files.update(
+                {'filename': path, 'visible': True},
+                {'$set': {'filename': new, 'dirname': dirname}},
+                upsert=False,
+                multi=False,
+                )
+
     def chmod(self, path, mode):
         self.fs.files.update(
                 {'filename': path, 'visible': True},
@@ -291,7 +303,7 @@ class GridFUSE(Operations):
             raise FuseOSError(ENOENT)
 
         self.fs.files.update(
-                {'filename': path},
+                {'filename': path, 'visible': True},
                 {'$set': {'visible': False}},
                 upsert=False,
                 multi=True,
