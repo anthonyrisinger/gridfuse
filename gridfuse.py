@@ -387,16 +387,19 @@ if __name__ == '__main__':
             help='increase output verbosity',
             )
     parser.add_argument(
-            '-u', '--uri',
+            '--node',
+            metavar='CONNECTION',
             action='append',
             help='connection: [mongodb://]HOST[/db[/coll]] (repeatable)',
             )
     parser.add_argument(
-            '-d', '--db',
+            '--db',
+            metavar='DATABASE',
             help='force specified database',
             )
     parser.add_argument(
-            '-c', '--coll',
+            '--coll',
+            metavar='COLLECTION',
             help='force specified collection',
             )
     parser.add_argument(
@@ -408,7 +411,7 @@ if __name__ == '__main__':
     o.verbose = min(o.verbose, 3)
 
     fuse = fuse.FUSE(
-            GridFUSE(o.uri, o.db, o.coll, debug=bool(o.verbose & 1)),
+            GridFUSE(o.node, o.db, o.coll, debug=bool(o.verbose & 1)),
             o.mountpoint,
             raw_fi=True,
             foreground=o.foreground,
